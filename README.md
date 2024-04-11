@@ -23,6 +23,7 @@ Additionally, feature generation requires TensorFlow (>= 1.0).
 First, clone the repository:
 ```
 conda create DeepSort_env python=3.6
+conda activate DeepSort_env
 git clone https://github.com/nwojke/deep_sort.git
 pip install -r requirements.txt
 ```
