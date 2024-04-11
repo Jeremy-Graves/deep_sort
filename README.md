@@ -22,7 +22,9 @@ Additionally, feature generation requires TensorFlow (>= 1.0).
 
 First, clone the repository:
 ```
+conda create DeepSort_env python=3.6
 git clone https://github.com/nwojke/deep_sort.git
+pip install -r requirements.txt
 ```
 Then, download pre-generated detections and the CNN checkpoint file from
 [here](https://drive.google.com/open?id=18fKzfqnqhqW3s9zwsCbnVJ5XF2JFeqMp).
