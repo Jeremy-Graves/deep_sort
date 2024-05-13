@@ -119,6 +119,23 @@ files. These can be computed from MOTChallenge detections using
 `generate_detections.py`. We also provide
 [pre-generated detections](https://drive.google.com/open?id=1VVqtL0klSUvLnmBKS89il1EKC3IxUBVK).
 
+### ISL EEAI Adaptation
+
+The changes made to the original deep sort include:
+* Benchmarking scripts.
+* Making deep sort run as one process.
+
+To create the environment:
+```
+conda create DeepSort_env
+cd deep_sort
+pip install -r requirements.txt
+```
+To run deep sort:
+```
+python run_full_deep_sort.py --video=<path_to_video> --output=TestData --sequence_dir=TestVideo --model=resources/networks/mars-small128.pb --detection_output=./resources/detections/TestVideo --min_confidence=0.3 --nn_budget=100 --display=True
+```
+
 ## Citing DeepSORT
 
 If you find this repo useful in your research, please consider citing the following papers:
