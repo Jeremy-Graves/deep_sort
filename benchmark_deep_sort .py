@@ -7,12 +7,27 @@ import os
 import cv2
 import numpy as np
 
+import time
+import psutil
+import matplotlib.pyplot as plt
+
 from application_util import preprocessing
 from application_util import visualization
 from deep_sort import nn_matching
 from deep_sort.detection import Detection
 from deep_sort.tracker import Tracker
 
+# Empty list to hold inference times
+inf_times = []
+
+# Empty list to hold CPU usage
+cpu_usage = []
+
+# Empty list to hold memory usage
+memory_usage = []
+
+# Empty list to hold Preprocessing times
+post_processing_times = []
 
 def gather_sequence_info(sequence_dir, detection_file):
     """Gather sequence information, such as image filenames, detections,
@@ -162,10 +177,16 @@ def run(sequence_dir, detection_file, output_file, min_confidence,
         "cosine", max_cosine_distance, nn_budget)
     tracker = Tracker(metric)
     results = []
-
+    
     def frame_callback(vis, frame_idx):
         print("Processing frame %05d" % frame_idx)
-
+        
+        # Get CPU Usage
+        cpu_usage.append(psutil.cpu_percent())
+        
+        # Get Memory Usage
+        memory_usage.append(psutil.virtual_memory().percent)
+        
         # Load image and generate detections.
         detections = create_detections(
             seq_info["detections"], frame_idx, min_detection_height)
@@ -177,11 +198,22 @@ def run(sequence_dir, detection_file, output_file, min_confidence,
         indices = preprocessing.non_max_suppression(
             boxes, nms_max_overlap, scores)
         detections = [detections[i] for i in indices]
-
+        
+        # Start timer for inferences
+        inf_time_start = time.time()
+        
         # Update tracker.
         tracker.predict()
         tracker.update(detections)
-
+        
+        # End timer for inferences
+        inf_time_end = time.time()
+        
+        # Append inference time to list in milliseconds
+        inf_times.append((inf_time_end - inf_time_start)*1000)
+        
+        # Start timer for preprocessing
+        start_pp_time = time.time()
         # Update visualization.
         if display:
             image = cv2.imread(
@@ -197,7 +229,13 @@ def run(sequence_dir, detection_file, output_file, min_confidence,
             bbox = track.to_tlwh()
             results.append([
                 frame_idx, track.track_id, bbox[0], bbox[1], bbox[2], bbox[3]])
-
+        
+        # End timer for preprocessing
+        end_pp_time = time.time()
+        
+        # Append the preprocessing time to the list
+        post_processing_times.append((end_pp_time - start_pp_time)*1000)  
+                              
     # Run tracker.
     if display:
         visualizer = visualization.Visualization(seq_info, update_ms=5)
@@ -211,7 +249,6 @@ def run(sequence_dir, detection_file, output_file, min_confidence,
         print('%d,%d,%.2f,%.2f,%.2f,%.2f,1,-1,-1,-1' % (
             row[0], row[1], row[2], row[3], row[4], row[5]),file=f)
 
-
 def bool_string(input_string):
     if input_string not in {"True","False"}:
         raise ValueError("Please Enter a valid Ture/False choice")
@@ -222,15 +259,12 @@ def parse_args():
     """ Parse command line arguments.
     """
     parser = argparse.ArgumentParser(description="Deep SORT")
-    
     parser.add_argument(
         "--sequence_dir", help="Path to MOTChallenge sequence directory",
         default=None, required=True)
-    
     parser.add_argument(
         "--detection_file", help="Path to custom detections.", default=None,
         required=True)
-    
     parser.add_argument(
         "--output_file", help="Path to the tracking output file. This file will"
         " contain the tracking results on completion.",
@@ -260,7 +294,41 @@ def parse_args():
 
 if __name__ == "__main__":
     args = parse_args()
+    
     run(
-        args.sequence_dir, args.detection_file, args.output_file,
-        args.min_confidence, args.nms_max_overlap, args.min_detection_height,
-        args.max_cosine_distance, args.nn_budget, args.display)
+    args.sequence_dir, args.detection_file, args.output_file,
+    args.min_confidence, args.nms_max_overlap, args.min_detection_height,
+    args.max_cosine_distance, args.nn_budget, args.display)
+    
+    # Plot inference times
+    plt.plot(inf_times)
+    plt.xlabel('Predictions')
+    plt.ylabel('Inference Time (ms)')
+    plt.title('Inference Time')
+    plt.figtext(0.5, 0.0, f'Average Inference Time: {sum(inf_times) / len(inf_times):.2f} ms', wrap=True, horizontalalignment='center', fontsize=12)
+    plt.show()
+
+    # Plot CPU Usage
+    plt.plot(cpu_usage)
+    plt.xlabel('Predictions')
+    plt.ylabel('CPU Usage (%)')
+    plt.title('CPU Usage')
+    plt.figtext(0.5, 0.0, f'Average CPU Usage: {sum(cpu_usage) / len(cpu_usage):.2f} %', wrap=True, horizontalalignment='center', fontsize=12)
+    plt.show()
+    
+    # Plot Memory Usage
+    plt.plot(memory_usage)
+    plt.xlabel('Predictions')
+    plt.ylabel('Memory Usage (%)')
+    plt.title('Memory Usage')
+    plt.figtext(0.5, 0.0, f'Average Memory Usage: {sum(memory_usage) / len(memory_usage):.2f} %', wrap=True, horizontalalignment='center', fontsize=12)
+    plt.show()
+    
+    # Plot Preprocessing Times
+    plt.plot(post_processing_times)
+    plt.xlabel('Predictions')
+    plt.ylabel('Post-processing Time (ms)')
+    plt.title('Post-processing Time')
+    plt.figtext(0.5, 0.0, f'Average Post-processing Time: {sum(post_processing_times) / len(post_processing_times):.2f} ms', wrap=True, horizontalalignment='center', fontsize=12)
+    plt.show()
+    
